@@ -36,9 +36,9 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Evaluation')
 parser.add_argument('--trained_model',
-                    default='weights/ssd300_mAP_77.43_v2.pth', type=str,
+                    default='weights/pretrain/ssd300_mAP_77.43_v2.pth', type=str,
                     help='Trained state_dict file path to open')
-parser.add_argument('--save_folder', default='eval/', type=str,
+parser.add_argument('--save_folder', default='./eval/', type=str,
                     help='File path to save results')
 parser.add_argument('--confidence_threshold', default=0.01, type=float,
                     help='Detection confidence threshold')
@@ -372,7 +372,7 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
 
     # timers
     _t = {'im_detect': Timer(), 'misc': Timer()}
-    output_dir = get_output_dir('ssd300_120000', set_type)
+    output_dir = get_output_dir(os.path.join(save_folder,'ssd300_120000'), set_type)
     det_file = os.path.join(output_dir, 'detections.pkl')
 
     for i in range(num_images):
@@ -382,6 +382,7 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
+        print("the type of net(x) is:",type(net(x)))
         detections = net(x).data
         detect_time = _t['im_detect'].toc(average=False)
 

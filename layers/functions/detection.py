@@ -33,6 +33,9 @@ class Detect(Function):
         """
         num = loc_data.size(0)  # batch size
         num_priors = prior_data.size(0)
+        #print("loc_data:",loc_data.size())
+        print("conf_data:",conf_data.size())
+        print("prior_data:",prior_data.size())
         output = torch.zeros(num, self.num_classes, self.top_k, 5)
         conf_preds = conf_data.view(num, num_priors,
                                     self.num_classes).transpose(2, 1)

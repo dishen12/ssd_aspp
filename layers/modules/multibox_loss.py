@@ -58,20 +58,22 @@ class MultiBoxLoss(nn.Module):
                 shape: [batch_size,num_objs,5] (last idx is the label).
         """
         loc_data, conf_data, priors = predictions
-        num = loc_data.size(0)
-        priors = priors[:loc_data.size(1), :]
-        num_priors = (priors.size(0))
+        num = loc_data.size(0)   
+        priors = priors[:loc_data.size(1), :] # loc_data.size(1) 14330
+        num_priors = (priors.size(0)) #8732
+        #print("num of priors box is:!!!!!!!!!!!!!!!!!!!!!!!",num_priors,"the size of loc_data is:",loc_data.size(),"conf_data",conf_data.size())
         num_classes = self.num_classes
-
+        #先通过prior box与gt匹配，第一次筛选，选择cof>0的idx
         # match priors (default boxes) and ground truth boxes
         loc_t = torch.Tensor(num, num_priors, 4)
         conf_t = torch.LongTensor(num, num_priors)
         for idx in range(num):
             truths = targets[idx][:, :-1].data
             labels = targets[idx][:, -1].data
+            #print("labels is !!!!!!!!!!!!!!! :",labels.size())
             defaults = priors.data
             match(self.threshold, truths, defaults, self.variance, labels,
-                  loc_t, conf_t, idx)
+                  loc_t, conf_t, idx)  
         if self.use_gpu:
             loc_t = loc_t.cuda()
             conf_t = conf_t.cuda()
@@ -84,9 +86,10 @@ class MultiBoxLoss(nn.Module):
 
         # Localization Loss (Smooth L1)
         # Shape: [batch,num_priors,4]
+        
         pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
-        loc_p = loc_data[pos_idx].view(-1, 4)
-        loc_t = loc_t[pos_idx].view(-1, 4)
+        loc_p = loc_data[pos_idx].view(-1, 4)# loc prediction
+        loc_t = loc_t[pos_idx].view(-1, 4)   # loc gt
         loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
 
         # Compute max conf across batch for hard negative mining
@@ -94,8 +97,8 @@ class MultiBoxLoss(nn.Module):
         loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1, 1))
 
         # Hard Negative Mining
-        loss_c[pos] = 0  # filter out pos boxes for now
         loss_c = loss_c.view(num, -1)
+        loss_c[pos] = 0  # filter out pos boxes for now
         _, loss_idx = loss_c.sort(1, descending=True)
         _, idx_rank = loss_idx.sort(1)
         num_pos = pos.long().sum(1, keepdim=True)
@@ -111,7 +114,9 @@ class MultiBoxLoss(nn.Module):
 
         # Sum of losses: L(x,c,l,g) = (Lconf(x, c) + αLloc(x,l,g)) / N
 
-        N = num_pos.data.sum()
+        N = num_pos.data.sum().double()
+        loss_l = loss_l.double()
+        loss_c = loss_c.double()
         loss_l /= N
         loss_c /= N
         return loss_l, loss_c

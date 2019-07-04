@@ -1,7 +1,7 @@
 from data import *
 from utils.augmentations import SSDAugmentation
 from layers.modules import MultiBoxLoss
-from ssd import build_ssd
+from model.ssd import build_ssd
 import os
 import sys
 import time
@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(
 train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
                     type=str, help='VOC or COCO')
-parser.add_argument('--dataset_root', default=VOC_ROOT,
+parser.add_argument('--dataset_root', default="/nfs/project/VOC/VOCdevkit/VOCdevkit/",
                     help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
                     help='Pretrained base model')
@@ -49,7 +49,7 @@ parser.add_argument('--gamma', default=0.1, type=float,
                     help='Gamma update for SGD')
 parser.add_argument('--visdom', default=False, type=str2bool,
                     help='Use visdom for loss visualization')
-parser.add_argument('--save_folder', default='weights/',
+parser.add_argument('--save_folder', default='weights/voc/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
 
@@ -139,8 +139,10 @@ def train():
     if args.visdom:
         vis_title = 'SSD.PyTorch on ' + dataset.name
         vis_legend = ['Loc Loss', 'Conf Loss', 'Total Loss']
+        """
         iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
         epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
+        """
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
@@ -162,7 +164,12 @@ def train():
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
         # load train data
-        images, targets = next(batch_iterator)
+        #images, targets = next(batch_iterator)
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            batch_iterator = iter(data_loader)
+            images, targets = next(batch_iterator)
 
         if args.cuda:
             images = Variable(images.cuda())
@@ -193,7 +200,7 @@ def train():
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_' +
+            torch.save(ssd_net.state_dict(), 'weights/voc/ssd300_COCO_' +
                        repr(iteration) + '.pth')
     torch.save(ssd_net.state_dict(),
                args.save_folder + '' + args.dataset + '.pth')
@@ -219,7 +226,7 @@ def weights_init(m):
         xavier(m.weight.data)
         m.bias.data.zero_()
 
-
+"""
 def create_vis_plot(_xlabel, _ylabel, _title, _legend):
     return viz.line(
         X=torch.zeros((1,)).cpu(),
@@ -231,8 +238,9 @@ def create_vis_plot(_xlabel, _ylabel, _title, _legend):
             legend=_legend
         )
     )
+"""
 
-
+"""
 def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
                     epoch_size=1):
     viz.line(
@@ -249,7 +257,7 @@ def update_vis_plot(iteration, loc, conf, window1, window2, update_type,
             win=window2,
             update=True
         )
-
+"""
 
 if __name__ == '__main__':
     train()
